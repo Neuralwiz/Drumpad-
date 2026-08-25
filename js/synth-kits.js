@@ -184,7 +184,10 @@
   const AMEN_RIDE_BARS = [
     "full", "full", "chop", "chop",
     "snare", "full", "stutter", "full",
-    "chop", "snare", "full",
+    "chop", "snare", "full", "stutter",
+    "full", "chop", "snare", "full",
+    "chop", "stutter", "full", "full",
+    "chop", "snare",
   ];
 
   function stepTime(step) {
@@ -266,18 +269,19 @@
     }
     const roll = await render(stepTime(8) + 0.4, (ctx) => {
       const bus = ctx.createGain();
+      bus.gain.value = 0.72;
       bus.connect(ctx.destination);
       for (let i = 0; i < 16; i += 1) {
         const when = (60 / JUNGLE_BPM / 8) * i;
-        const vel = 0.55 + (i / 16) * 0.45;
+        const vel = 0.48 + (i / 16) * 0.38;
         hitAmen(ctx, bus, i === 15 ? "cr" : "sn", when, vel);
       }
     });
     const start = 24 * slice;
     for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
-      sliceCopy(dest, start, roll, 0, roll.length, 1);
+      sliceCopy(dest, start, roll, 0, roll.length, 0.85);
     }
-    return dest;
+    return vintageBuffer(dest);
   }
 
   async function renderAmenRide() {
@@ -287,8 +291,9 @@
     const bar = Math.floor(core.length / 2);
     const sixteenth = Math.floor(core.length / AMEN_STEPS);
     let offset = 0;
-    AMEN_RIDE_BARS.forEach((kind, barIndex) => {
-      if (offset + bar > dest.length) return;
+    let barIndex = 0;
+    while (offset < dest.length) {
+      const kind = AMEN_RIDE_BARS[barIndex % AMEN_RIDE_BARS.length];
       if (kind === "full") {
         const srcOff = (barIndex % 2) * bar;
         sliceCopy(dest, offset, core, srcOff, bar, 1);
@@ -311,7 +316,8 @@
         void _never;
       }
       offset += bar;
-    });
+      barIndex += 1;
+    }
     const fade = Math.floor(SR * 2.4);
     for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
       const data = dest.getChannelData(ch);
@@ -535,34 +541,34 @@
       { type: "sine", freq: 103.83, amp: 0.05 },
     ], { bright0: 280, bright1: 720, move: 0.045, drive: 1.8, lfoHz: 90, air: 0.012 }),
     padWarm: () => fillLushPad(30, [
-      { type: "saw", freq: 138.59, amp: 0.07, detune: -0.004 },
-      { type: "saw", freq: 138.59, amp: 0.07, detune: 0.005 },
-      { type: "saw", freq: 164.81, amp: 0.055 },
-      { type: "saw", freq: 207.65, amp: 0.05, detune: 0.003 },
-      { type: "saw", freq: 246.94, amp: 0.04 },
-      { type: "sine", freq: 311.13, amp: 0.045 },
-      { type: "sine", freq: 69.3, amp: 0.08 },
-      { type: "triangle", freq: 415.3, amp: 0.03 },
-    ], { bright0: 900, bright1: 2600, move: 0.07, drive: 1.28, lfoHz: 420, air: 0.03 }),
+      { type: "saw", freq: 138.59, amp: 0.09, detune: -0.004 },
+      { type: "saw", freq: 138.59, amp: 0.09, detune: 0.005 },
+      { type: "saw", freq: 164.81, amp: 0.07 },
+      { type: "saw", freq: 207.65, amp: 0.065, detune: 0.003 },
+      { type: "saw", freq: 246.94, amp: 0.055 },
+      { type: "sine", freq: 311.13, amp: 0.055 },
+      { type: "sine", freq: 69.3, amp: 0.1 },
+      { type: "triangle", freq: 415.3, amp: 0.04 },
+    ], { bright0: 900, bright1: 2600, move: 0.07, drive: 1.38, lfoHz: 420, air: 0.03 }),
     padChoir: () => fillLushPad(30, [
-      { type: "sine", freq: 110, amp: 0.1 },
-      { type: "sine", freq: 164.81, amp: 0.08, detune: 0.002 },
-      { type: "sine", freq: 220, amp: 0.07 },
-      { type: "sine", freq: 261.63, amp: 0.06, detune: -0.002 },
-      { type: "sine", freq: 329.63, amp: 0.05 },
-      { type: "triangle", freq: 440, amp: 0.035 },
-      { type: "sine", freq: 554.37, amp: 0.028 },
-      { type: "sine", freq: 55, amp: 0.06 },
-    ], { bright0: 1600, bright1: 4200, move: 0.055, drive: 1.08, lfoHz: 260, air: 0.05 }),
+      { type: "sine", freq: 110, amp: 0.13 },
+      { type: "sine", freq: 164.81, amp: 0.1, detune: 0.002 },
+      { type: "sine", freq: 220, amp: 0.09 },
+      { type: "sine", freq: 261.63, amp: 0.08, detune: -0.002 },
+      { type: "sine", freq: 329.63, amp: 0.065 },
+      { type: "triangle", freq: 440, amp: 0.045 },
+      { type: "sine", freq: 554.37, amp: 0.036 },
+      { type: "sine", freq: 55, amp: 0.08 },
+    ], { bright0: 1600, bright1: 4200, move: 0.055, drive: 1.16, lfoHz: 260, air: 0.05 }),
     padHornet: () => fillLushPad(30, [
-      { type: "saw", freq: 87.31, amp: 0.07, detune: -0.005 },
-      { type: "saw", freq: 87.31, amp: 0.07, detune: 0.006 },
-      { type: "saw", freq: 130.81, amp: 0.055 },
-      { type: "saw", freq: 207.65, amp: 0.05 },
-      { type: "saw", freq: 233.08, amp: 0.04, detune: 0.003 },
-      { type: "triangle", freq: 311.13, amp: 0.04 },
-      { type: "sine", freq: 43.65, amp: 0.07 },
-    ], { bright0: 620, bright1: 1900, move: 0.06, drive: 1.42, lfoHz: 340, air: 0.022 }),
+      { type: "saw", freq: 87.31, amp: 0.09, detune: -0.005 },
+      { type: "saw", freq: 87.31, amp: 0.09, detune: 0.006 },
+      { type: "saw", freq: 130.81, amp: 0.07 },
+      { type: "saw", freq: 207.65, amp: 0.065 },
+      { type: "saw", freq: 233.08, amp: 0.05, detune: 0.003 },
+      { type: "triangle", freq: 311.13, amp: 0.05 },
+      { type: "sine", freq: 43.65, amp: 0.09 },
+    ], { bright0: 620, bright1: 1900, move: 0.06, drive: 1.5, lfoHz: 340, air: 0.022 }),
   };
 
   const roleMeta = {
@@ -575,6 +581,7 @@
     cym: { color: "#c5a7ff", choke: 2 },
     fx: { color: "#ff7ad1", choke: 0 },
     pad: { color: "#e8c36a", choke: 0 },
+    break: { color: "#ffb020", choke: 3 },
     loop: { color: "#e8f7ff", choke: 0 },
   };
 
@@ -630,14 +637,14 @@
           delay: 0.2,
           reverb: 0.12,
         }),
-        pad("Fill", "loop", "amenFill", {
+        pad("Fill", "break", "amenFill", {
           mode: "oneshot",
           choke: 3,
           color: "#ff4d4d",
           reverb: 0.18,
           delay: 0.1,
         }),
-        pad("Ride", "loop", "amenRide", {
+        pad("Ride", "break", "amenRide", {
           mode: "oneshot",
           choke: 3,
           color: "#ffd36a",
