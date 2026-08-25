@@ -1,4 +1,4 @@
-const CACHE = "pulse-v1";
+const CACHE = "pulse-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./js/audio-engine.js",
   "./js/synth-kits.js",
   "./js/importer.js",
+  "./js/store.js",
   "./js/app.js",
   "./icons/icon-180.png",
   "./icons/icon-192.png",

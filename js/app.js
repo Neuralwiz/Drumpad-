@@ -11,7 +11,7 @@
     },
     {
       title: "Rec + scener",
-      body: "<ol><li>REC + PLAY spelar in med overdub.</li><li>A–D byter scene mitt i jammet. Svep sidledes på padden.</li><li>Importera Loopmasters-zip eller exportera WAV till TikTok/IG.</li></ol>",
+      body: "<ol><li>REC + PLAY spelar in med overdub. Varje scene A–D har sitt eget beat.</li><li>Importerade packs och patterns sparas i webbläsaren.</li><li>⎘ kopierar scenen, ↩ ångrar sista slaget. Exportera WAV till TikTok/IG.</li></ol>",
     },
   ];
 
@@ -21,6 +21,7 @@
     kitIndex: 0,
     scene: 0,
     scenes: [0, 1, 2, 3],
+    banks: null,
     bpm: 132,
     swing: 0.08,
     quantize: true,
@@ -59,6 +60,45 @@
 
   function currentKit() {
     return state.kits[state.kitIndex];
+  }
+
+  function makeBank(kitIndex = 0, bpm = 132) {
+    return { kitId: null, kitIndex, pattern: [], bpm, bars: 2 };
+  }
+
+  function snapshotBank() {
+    return {
+      kitId: currentKit()?.id || null,
+      kitIndex: state.kitIndex,
+      pattern: state.pattern.map(({ armedAt, ...rest }) => rest),
+      bpm: state.bpm,
+      bars: state.bars,
+    };
+  }
+
+  function persistSoon() {
+    clearTimeout(persistSoon.tid);
+    persistSoon.tid = window.setTimeout(persistNow, 700);
+  }
+
+  async function persistNow() {
+    if (!state.engine || !state.banks) return;
+    state.banks[state.scene] = snapshotBank();
+    const imported = state.kits
+      .filter((kit) => !kit.builtIn)
+      .map((kit) => window.PulseStore.serializeKit(state.engine, kit));
+    await window.PulseStore.put("session", {
+      banks: state.banks,
+      scene: state.scene,
+      swing: state.swing,
+      quantize: state.quantize,
+      qStrength: state.qStrength,
+      metro: state.metro,
+      haptics: state.haptics,
+      particlesOn: state.particlesOn,
+      rollDiv: state.rollDiv,
+      imported,
+    });
   }
 
   function loopLength() {
@@ -228,6 +268,7 @@
         armedAt: state.loopStart + Math.ceil((when - state.loopStart + 0.0001) / loopLength()) * loopLength(),
       });
       updatePatternMeta();
+      persistSoon();
     }
     return played;
   }
@@ -248,16 +289,29 @@
 
   function startRoll(index, velocity) {
     stopRoll(index);
+    const ctx = state.engine.ctx;
     const step = (60 / state.bpm) / (state.rollDiv / 4);
-    const fire = () => hitPad(index, velocity, "roll");
-    fire();
-    const id = window.setInterval(fire, step * 1000);
-    state.rolls.set(index, id);
+    const roll = { next: ctx.currentTime, timer: 0 };
+    const tick = () => {
+      if (!state.rolls.has(index)) return;
+      while (roll.next < ctx.currentTime + 0.035) {
+        const kit = currentKit();
+        const pad = kit.pads[index];
+        if (pad) {
+          state.engine.playPad({ ...pad, kit }, velocity, roll.next);
+          flashPad(index, velocity);
+        }
+        roll.next += step;
+      }
+      roll.timer = window.setTimeout(tick, 10);
+    };
+    state.rolls.set(index, roll);
+    tick();
   }
 
   function stopRoll(index) {
-    const id = state.rolls.get(index);
-    if (id) window.clearInterval(id);
+    const roll = state.rolls.get(index);
+    if (roll?.timer) window.clearTimeout(roll.timer);
     state.rolls.delete(index);
   }
 
@@ -316,15 +370,18 @@
         state.engine.click(t, step % 16 === 0);
         pulseMetro(step % 16 === 0);
       }
-      const loopT = (step * stepLen) % loopLength();
+      const stepsPerLoop = Math.max(1, Math.round(loopLength() / stepLen));
+      const stepInLoop = step % stepsPerLoop;
       for (const event of state.pattern) {
         if (event.armedAt && t < event.armedAt - 0.0001) continue;
-        if (Math.abs(event.time - loopT) < stepLen * 0.49) {
+        const eventStep = Math.round(event.time / stepLen) % stepsPerLoop;
+        if (eventStep === stepInLoop) {
           const pad = currentKit().pads[event.pad];
           if (pad) state.engine.playPad({ ...pad, kit: currentKit() }, event.velocity, t);
           flashPad(event.pad, event.velocity);
         }
       }
+      updatePlayhead(step);
       state.step += 1;
       state.nextNoteTime += stepLen;
     }
@@ -335,6 +392,27 @@
     els.metroPulse.classList.add("on");
     els.metroPulse.classList.toggle("beat", accent);
     window.setTimeout(() => els.metroPulse.classList.remove("on", "beat"), 80);
+  }
+
+  function renderPlayhead() {
+    els.playhead.innerHTML = Array.from({ length: 16 }, () => "<i></i>").join("");
+  }
+
+  function updatePlayhead(step) {
+    const idx = ((step % 16) + 16) % 16;
+    els.playhead.querySelectorAll("i").forEach((el, i) => {
+      el.classList.toggle("on", i === idx);
+      el.classList.toggle("beat", i === idx && i % 4 === 0);
+    });
+  }
+
+  function markScenes() {
+    document.querySelectorAll(".scene-btn").forEach((btn) => {
+      const index = Number(btn.dataset.scene);
+      const bank = index === state.scene ? snapshotBank() : state.banks?.[index];
+      btn.classList.toggle("filled", (bank?.pattern?.length || 0) > 0);
+      btn.classList.toggle("active", index === state.scene);
+    });
   }
 
   function startTransport() {
@@ -357,30 +435,50 @@
   }
 
   function updatePatternMeta() {
-    els.patternMeta.textContent = `P${state.scene + 1} · ${state.pattern.length} hits`;
+    els.patternMeta.textContent = `${"ABCD"[state.scene]} · ${state.pattern.length} hits`;
+    markScenes();
   }
 
-  function setKit(index, { keepBpm = false } = {}) {
+  function applyTransportReadouts() {
+    els.bpm.value = String(state.bpm);
+    els.bpmOut.textContent = String(state.bpm);
+    $("bars").value = String(state.bars);
+    state.engine.setDelayTime(60 / state.bpm);
+  }
+
+  function setKit(index, { keepBpm = false, quiet = false } = {}) {
     state.kitIndex = index;
     state.scenes[state.scene] = index;
     const kit = currentKit();
     if (!keepBpm && kit.bpm) {
       state.bpm = kit.bpm;
-      els.bpm.value = String(kit.bpm);
-      els.bpmOut.textContent = String(kit.bpm);
+      applyTransportReadouts();
     }
     els.kitSelect.value = kit.id;
     renderPads();
-    toast(kit.name);
+    if (!quiet) toast(kit.name);
+    persistSoon();
+  }
+
+  function applyBank(bank, { quiet = true } = {}) {
+    const byId = bank.kitId ? state.kits.findIndex((kit) => kit.id === bank.kitId) : -1;
+    state.kitIndex = byId >= 0 ? byId : Math.min(bank.kitIndex ?? 0, state.kits.length - 1);
+    state.pattern = (bank.pattern || []).map((event) => ({ ...event }));
+    if (bank.bpm) state.bpm = bank.bpm;
+    if (bank.bars) state.bars = bank.bars;
+    applyTransportReadouts();
+    els.kitSelect.value = currentKit().id;
+    renderPads();
+    updatePatternMeta();
+    if (!quiet) toast(currentKit().name);
   }
 
   function setScene(scene) {
+    if (scene === state.scene) return;
+    state.banks[state.scene] = snapshotBank();
     state.scene = scene;
-    document.querySelectorAll(".scene-btn").forEach((btn) => {
-      btn.classList.toggle("active", Number(btn.dataset.scene) === scene);
-    });
-    setKit(state.scenes[scene] ?? scene % state.kits.length, { keepBpm: true });
-    updatePatternMeta();
+    applyBank(state.banks[scene] || makeBank(scene));
+    persistSoon();
   }
 
   function fillKitSelect() {
@@ -440,6 +538,7 @@
       pad.mode = $("pad-mode").value;
       pad.choke = Number($("pad-choke").value);
       renderPads();
+      persistSoon();
     };
     $("sheet-inspector").querySelectorAll("input,select").forEach((input) => {
       input.addEventListener("input", apply);
@@ -492,8 +591,9 @@
       state.kits.push(kit);
       fillKitSelect();
       setKit(state.kits.length - 1);
-      $("import-status").textContent = `${kit.name} mappad till 16 pads.`;
-      toast("Pack importerat");
+      $("import-status").textContent = `${kit.name} mappad till 16 pads. Sparas i webbläsaren.`;
+      toast("Pack importerat · sparat");
+      persistSoon();
     } catch (error) {
       $("import-status").textContent = error.message;
     }
@@ -535,13 +635,32 @@
     $("btn-clear").addEventListener("click", () => {
       state.pattern = [];
       updatePatternMeta();
+      persistSoon();
       toast("Pattern rensat");
+    });
+    $("btn-undo").addEventListener("click", () => {
+      state.pattern.pop();
+      updatePatternMeta();
+      persistSoon();
+      toast("Ångrade sista slaget");
+    });
+    $("btn-copy").addEventListener("click", () => {
+      const next = (state.scene + 1) % 4;
+      state.banks[state.scene] = snapshotBank();
+      state.banks[next] = {
+        ...snapshotBank(),
+        pattern: state.pattern.map((event) => ({ ...event })),
+      };
+      markScenes();
+      persistSoon();
+      toast(`Kopierade ${"ABCD"[state.scene]} → ${"ABCD"[next]}`);
     });
 
     els.bpm.addEventListener("input", () => {
       state.bpm = Number(els.bpm.value);
       els.bpmOut.textContent = String(state.bpm);
       state.engine.setDelayTime(60 / state.bpm);
+      persistSoon();
     });
     $("swing").addEventListener("input", () => {
       state.swing = Number($("swing").value) / 100;
@@ -565,6 +684,7 @@
     });
     $("bars").addEventListener("change", (e) => {
       state.bars = Number(e.target.value);
+      persistSoon();
     });
 
     els.kitSelect.addEventListener("change", () => {
@@ -663,6 +783,9 @@
       $("install-bar").classList.add("hidden");
     });
     $("btn-install-dismiss").addEventListener("click", () => $("install-bar").classList.add("hidden"));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") persistNow();
+    });
   }
 
   function resizeParticles() {
@@ -680,6 +803,7 @@
     els.kitSelect = $("kit-select");
     els.metroPulse = $("metro-pulse");
     els.patternMeta = $("pattern-meta");
+    els.playhead = $("playhead");
     els.particles = $("particles");
     els.tutorial = $("tutorial");
     els.tutorialNext = $("tutorial-next");
@@ -695,16 +819,45 @@
       await state.engine.resume();
       $("boot").querySelector("p").textContent = "Bygger starter kits…";
       state.kits = await window.PulseKits.buildKits(state.engine);
-      state.scenes = [0, 1, 2, 3].map((i) => Math.min(i, state.kits.length - 1));
+      state.banks = [0, 1, 2, 3].map((i) => makeBank(Math.min(i, state.kits.length - 1), state.kits[i]?.bpm || 132));
+      try {
+        const saved = await window.PulseStore.get("session");
+        if (saved?.imported?.length) {
+          for (const pack of saved.imported) {
+            state.kits.push(window.PulseStore.restoreKit(state.engine, pack));
+          }
+        }
+        if (saved?.banks) {
+          state.banks = saved.banks;
+          state.scene = saved.scene ?? 0;
+          state.swing = saved.swing ?? state.swing;
+          state.quantize = saved.quantize ?? state.quantize;
+          state.qStrength = saved.qStrength ?? state.qStrength;
+          state.metro = saved.metro ?? state.metro;
+          state.haptics = saved.haptics ?? state.haptics;
+          state.particlesOn = saved.particlesOn ?? state.particlesOn;
+          state.rollDiv = saved.rollDiv ?? state.rollDiv;
+        }
+      } catch {
+        /* first run or private mode */
+      }
       fillKitSelect();
       bindUi();
       bindInspector();
+      renderPlayhead();
       resizeParticles();
       window.addEventListener("resize", resizeParticles);
-      setKit(0);
-      state.engine.setDelayTime(60 / state.bpm);
+      $("swing").value = String(Math.round(state.swing * 100));
+      $("swing-out").textContent = `${Math.round(state.swing * 100)}%`;
+      $("chk-metro").checked = state.metro;
+      $("chk-quantize").checked = state.quantize;
+      $("q-strength").value = String(Math.round(state.qStrength * 100));
+      $("chk-haptics").checked = state.haptics;
+      $("chk-particles").checked = state.particlesOn;
+      $("roll-div").value = String(state.rollDiv);
+      applyBank(state.banks[state.scene] || makeBank(0), { quiet: true });
       $("boot").classList.add("hidden");
-      window.PulseApp = { get engine() { return state.engine; }, get kits() { return state.kits; } };
+      window.PulseApp = { get engine() { return state.engine; }, get kits() { return state.kits; }, persist: persistNow };
       showTutorial(0);
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js");

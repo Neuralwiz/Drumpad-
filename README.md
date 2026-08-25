@@ -76,8 +76,9 @@ Tips för bättre mapping: behåll beskrivande namn (`Kick_808.wav`, `OHH_Room.w
 - `AudioContext({ latencyHint: "interactive" })` och röstpool (32 voices)
 - Per pad: sample, ADSR, LP/HP-filter kopplat till velocity, pitch, reverb/delay send
 - Globalt: convolution-reverb, syncad delay, compressor, kick-sidechain
-- Quantize on/off + strength, swing, metronom (ljud + LED)
+- Quantize on/off + strength, swing, metronom (ljud + LED + 16-stegs playhead)
 - Choke-grupper (hats / cymbals)
+- Scener A–D med egna patterns, kopiera/ångra, IndexedDB så importerade packs överlever reload
 
 Latens beror på OS. Sikta på iOS 16+ / aktuell Chrome. Settings-panelen visar uppmätt output latency och latency compensation.
 

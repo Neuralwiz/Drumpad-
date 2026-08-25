@@ -59,10 +59,11 @@
   }
 
   const recipes = {
-    kick808: () => render(0.9, (ctx) => {
-      tone(ctx, "sine", 168, 41, 1, 0.002, 0.72);
-      tone(ctx, "sine", 92, 48, 0.45, 0.001, 0.28);
-      tone(ctx, "triangle", 1900, 400, 0.22, 0.001, 0.012);
+    kick808: () => render(1.05, (ctx) => {
+      tone(ctx, "sine", 172, 38, 1, 0.002, 0.88);
+      tone(ctx, "sine", 96, 46, 0.5, 0.001, 0.32);
+      tone(ctx, "triangle", 2100, 380, 0.26, 0.001, 0.01);
+      playNoise(ctx, 0.03, "white", "bandpass", 180, 2.4, 0.12, 0.001, 0.02);
     }),
     kickPunch: () => render(0.55, (ctx) => {
       tone(ctx, "sine", 210, 58, 0.95, 0.001, 0.38);
@@ -109,12 +110,18 @@
       });
     }),
     hatClosed: () => render(0.16, (ctx) => {
-      playNoise(ctx, 0.12, "white", "highpass", 7200, 0.8, 0.42, 0.001, 0.055);
-      playNoise(ctx, 0.08, "white", "bandpass", 9800, 2.4, 0.3, 0.001, 0.03);
+      [1, 1.47, 1.83, 2.21, 2.74].forEach((ratio) => {
+        tone(ctx, "square", 310 * ratio, 310 * ratio, 0.045, 0.001, 0.045);
+      });
+      playNoise(ctx, 0.12, "white", "highpass", 7200, 0.8, 0.28, 0.001, 0.05);
+      playNoise(ctx, 0.08, "white", "bandpass", 9800, 2.4, 0.22, 0.001, 0.03);
     }),
     hatOpen: () => render(0.7, (ctx) => {
-      playNoise(ctx, 0.62, "white", "highpass", 6800, 0.7, 0.38, 0.001, 0.42);
-      playNoise(ctx, 0.4, "white", "bandpass", 10500, 1.6, 0.22, 0.001, 0.28);
+      [1, 1.47, 1.83, 2.21, 2.74, 3.13].forEach((ratio) => {
+        tone(ctx, "square", 290 * ratio, 290 * ratio, 0.03, 0.001, 0.38);
+      });
+      playNoise(ctx, 0.62, "white", "highpass", 6800, 0.7, 0.26, 0.001, 0.42);
+      playNoise(ctx, 0.4, "white", "bandpass", 10500, 1.6, 0.16, 0.001, 0.28);
     }),
     hatPedal: () => render(0.12, (ctx) => {
       playNoise(ctx, 0.08, "white", "highpass", 5400, 1.1, 0.32, 0.001, 0.04);
