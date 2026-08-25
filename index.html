@@ -88,11 +88,6 @@
         </div>
         <div class="transport-row">
           <div class="ctl grow">
-            <label for="q-strength">Quantize</label>
-            <input id="q-strength" type="range" min="0" max="100" value="70" />
-            <output id="q-out">70%</output>
-          </div>
-          <div class="ctl grow">
             <label for="reverb">Verb</label>
             <input id="reverb" type="range" min="0" max="100" value="22" />
           </div>
@@ -107,6 +102,7 @@
     </div>
 
     <canvas class="particle-layer" id="particles"></canvas>
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
     <div class="status-toast" id="toast"></div>
 
     <div class="boot" id="boot">
@@ -142,6 +138,9 @@
         </label>
         <label>Partiklar
           <input id="chk-particles" type="checkbox" checked />
+        </label>
+        <label>Quantize-styrka
+          <input id="q-strength" type="range" min="0" max="100" value="70" />
         </label>
         <label>Roll-upplösning
           <select id="roll-div">

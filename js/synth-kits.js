@@ -264,7 +264,7 @@
     },
     {
       id: "techno",
-      name: "Warehouse Techno",
+      name: "Techno",
       bpm: 132,
       pads: [
         pad("Kick", "kick", "kickTech", { cutoff: 4200 }),
@@ -287,7 +287,7 @@
     },
     {
       id: "acoustic",
-      name: "Live Acoustic",
+      name: "Acoustic",
       bpm: 104,
       pads: [
         pad("Kick", "kick", "kickAcoustic"),

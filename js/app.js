@@ -390,10 +390,11 @@
   }
 
   function openSheet(id) {
-    closeSheets();
-    const sheet = $(id);
-    sheet.classList.add("open");
-    sheet.setAttribute("aria-hidden", "false");
+    document.querySelectorAll(".sheet").forEach((sheet) => {
+      sheet.classList.toggle("open", sheet.id === id);
+      sheet.setAttribute("aria-hidden", String(sheet.id !== id));
+    });
+    $("sheet-backdrop").classList.add("open");
   }
 
   function closeSheets() {
@@ -401,6 +402,7 @@
       sheet.classList.remove("open");
       sheet.setAttribute("aria-hidden", "true");
     });
+    $("sheet-backdrop").classList.remove("open");
   }
 
   function openInspector(index) {
@@ -550,7 +552,7 @@
     $("delay").addEventListener("input", () => state.engine.setDelay(Number($("delay").value) / 100));
     $("q-strength").addEventListener("input", () => {
       state.qStrength = Number($("q-strength").value) / 100;
-      $("q-out").textContent = `${$("q-strength").value}%`;
+      /* readout lives in settings */
     });
     $("chk-metro").addEventListener("change", (e) => {
       state.metro = e.target.checked;
@@ -592,6 +594,7 @@
     document.querySelectorAll("[data-close]").forEach((btn) => {
       btn.addEventListener("click", closeSheets);
     });
+    $("sheet-backdrop").addEventListener("click", closeSheets);
 
     $("latency-comp").addEventListener("input", (e) => {
       state.engine.latencyComp = Number(e.target.value) / 1000;
@@ -701,6 +704,7 @@
       setKit(0);
       state.engine.setDelayTime(60 / state.bpm);
       $("boot").classList.add("hidden");
+      window.PulseApp = { get engine() { return state.engine; }, get kits() { return state.kits; } };
       showTutorial(0);
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js");

@@ -17,7 +17,7 @@ npx --yes serve -l 4173
 Öppna `http://localhost:4173` i telefonen (samma Wi-Fi) eller i Chrome DevTools device mode.
 
 1. Tryck **START SESSION** (iOS kräver en gest innan ljudet låses upp).
-2. Fyra starter kits syntetiseras i webbläsaren: Neon Trap, Boom Bap, Warehouse Techno, Live Acoustic.
+2. Fyra starter kits syntetiseras i webbläsaren: Neon Trap, Boom Bap, Techno, Acoustic.
 3. På iPhone: Dela → **Lägg till på hemskärmen**. På Android: Chrome-menyn → **Installera app**.
 
 ## Deploy

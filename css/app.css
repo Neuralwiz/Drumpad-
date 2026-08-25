@@ -16,8 +16,8 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
-  --header-h: 52px;
-  --transport-h: 118px;
+  --header-h: 44px;
+  --transport-h: 92px;
   color-scheme: dark;
 }
 
@@ -98,14 +98,15 @@ button {
 .app-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   min-height: var(--header-h);
 }
 
 .brand {
   display: flex;
   flex-direction: column;
-  min-width: 86px;
+  min-width: 64px;
 }
 
 .brand strong {
@@ -168,9 +169,9 @@ button {
 }
 
 .kit-select {
-  max-width: 132px;
-  height: 34px;
-  padding: 0 10px;
+  max-width: 118px;
+  height: 32px;
+  padding: 0 8px;
   color: var(--text);
   appearance: none;
 }
@@ -218,6 +219,7 @@ button {
 .stage {
   display: grid;
   min-height: 0;
+  overflow: hidden;
 }
 
 .pad-grid {
@@ -341,13 +343,13 @@ button {
 
 .transport {
   display: grid;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px 8px;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--panel);
   backdrop-filter: blur(18px);
-  min-height: var(--transport-h);
+  min-height: 0;
 }
 
 .transport-row {
@@ -456,6 +458,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .sheet,
+.sheet-backdrop,
 .modal,
 .tutorial,
 .boot,
@@ -495,20 +498,34 @@ input[type="range"]::-webkit-slider-thumb {
   letter-spacing: 0.08em;
 }
 
+.sheet-backdrop {
+  inset: 0;
+  background: rgba(3, 5, 12, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.sheet-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .sheet {
   left: 8px;
   right: 8px;
   bottom: 8px;
+  z-index: 40;
   max-height: min(82dvh, 720px);
   overflow: auto;
   padding: 16px;
   border-radius: 20px;
   border: 1px solid var(--line);
-  background: rgba(8, 11, 22, 0.94);
+  background: rgba(8, 11, 22, 0.96);
   backdrop-filter: blur(22px);
   touch-action: pan-y;
   transform: translateY(110%);
-  transition: transform 220ms ease;
+  transition: transform 180ms ease;
 }
 
 .sheet.open {
@@ -646,6 +663,11 @@ input[type="range"]::-webkit-slider-thumb {
 
   .app-header {
     grid-column: 1 / -1;
+    flex-wrap: nowrap;
+  }
+
+  .header-actions {
+    width: auto;
   }
 
   .stage {
@@ -673,11 +695,25 @@ input[type="range"]::-webkit-slider-thumb {
 
 @media (max-width: 720px) and (orientation: portrait) {
   .kit-select {
-    max-width: 108px;
+    max-width: 104px;
   }
 
   .brand span {
     display: none;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .pad {
+    border-radius: 14px;
+  }
+
+  .pad-name {
+    bottom: 16px;
+    font-size: 11px;
   }
 }
 
