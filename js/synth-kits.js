@@ -186,6 +186,52 @@
         osc.stop(t + 0.1);
       }
     }),
+    kickJungle: () => render(0.42, (ctx) => {
+      tone(ctx, "sine", 196, 52, 1, 0.001, 0.28);
+      tone(ctx, "triangle", 2400, 420, 0.28, 0.001, 0.012);
+      playNoise(ctx, 0.04, "white", "highpass", 2200, 0.8, 0.2, 0.001, 0.02);
+    }),
+    snareAmen: () => render(0.32, (ctx) => {
+      tone(ctx, "triangle", 236, 170, 0.28, 0.001, 0.08);
+      playNoise(ctx, 0.22, "white", "bandpass", 2800, 0.7, 0.78, 0.001, 0.14);
+      playNoise(ctx, 0.07, "white", "highpass", 7500, 0.5, 0.32, 0.001, 0.03);
+    }),
+    snareGhost: () => render(0.18, (ctx) => {
+      playNoise(ctx, 0.12, "white", "bandpass", 3200, 0.9, 0.38, 0.001, 0.07);
+    }),
+    reeseStab: () => render(0.55, (ctx) => {
+      [48, 50.2, 96].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.value = freq;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(420, 0);
+        filter.frequency.exponentialRampToValueAtTime(1800, 0.08);
+        filter.Q.value = 8;
+        const g = envGain(ctx, 0.16, 0.006, 0.42);
+        osc.connect(filter).connect(g).connect(ctx.destination);
+        osc.start();
+        osc.stop(0.5);
+      });
+    }),
+    amenBar: () => render(1.38, (ctx) => {
+      const hits = [0, 0.172, 0.345, 0.517, 0.689, 0.862, 1.034, 1.207];
+      hits.forEach((t, i) => {
+        const src = ctx.createBufferSource();
+        src.buffer = noiseBuffer(ctx, 0.12, i % 2 === 0 ? "pink" : "white");
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = i % 4 === 0 ? 180 : 2400;
+        bp.Q.value = 0.9;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(i % 4 === 0 ? 0.45 : 0.22, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + (i % 4 === 0 ? 0.12 : 0.06));
+        src.connect(bp).connect(g).connect(ctx.destination);
+        src.start(t);
+      });
+    }),
   };
 
   const roleMeta = {
@@ -270,49 +316,49 @@
       ],
     },
     {
-      id: "techno",
-      name: "Techno",
-      bpm: 132,
+      id: "jungle",
+      name: "Jungle",
+      bpm: 174,
       pads: [
-        pad("Kick", "kick", "kickTech", { cutoff: 4200 }),
-        pad("Snare", "snare", "snareRim"),
-        pad("Clap", "clap", "clap", { reverb: 0.24, delay: 0.16 }),
-        pad("CHH", "hat", "hatClosed"),
-        pad("Kick Sub", "kick", "kick808", { pitch: -2, volume: 0.85 }),
+        pad("Kick", "kick", "kickJungle", { cutoff: 5200 }),
+        pad("Amen", "snare", "snareAmen"),
+        pad("Ghost", "snare", "snareGhost"),
+        pad("CHH", "hat", "hatClosed", { filter: "highpass", cutoff: 7500 }),
+        pad("Sub", "kick", "kick808", { pitch: -1, volume: 0.72, cutoff: 3800 }),
         pad("Rim", "snare", "rim"),
-        pad("Perc", "perc", "perc", { delay: 0.22 }),
+        pad("Perc", "perc", "perc", { delay: 0.08 }),
+        pad("OHH", "hat", "hatOpen", { choke: 1, reverb: 0.12 }),
+        pad("Tom Lo", "tom", "tomLo"),
+        pad("Tom Hi", "tom", "tomHi"),
+        pad("Shaker", "perc", "shaker"),
+        pad("Ride", "cym", "ride", { reverb: 0.2 }),
+        pad("Reese", "fx", "reeseStab", { delay: 0.14 }),
+        pad("Crash", "cym", "crash", { choke: 2 }),
+        pad("Stab", "fx", "stab"),
+        pad("Amen Lp", "loop", "amenBar", { mode: "loop", volume: 0.62 }),
+      ],
+    },
+    {
+      id: "roller",
+      name: "Roller",
+      bpm: 174,
+      pads: [
+        pad("Kick", "kick", "kickPunch", { cutoff: 4800 }),
+        pad("Snare", "snare", "snareAmen"),
+        pad("Clap", "clap", "clap", { reverb: 0.12 }),
+        pad("CHH", "hat", "hatClosed"),
+        pad("Sub", "kick", "kick808", { volume: 0.8, cutoff: 4200 }),
+        pad("Rim", "snare", "snareRim"),
+        pad("Perc", "perc", "perc", { delay: 0.16 }),
         pad("OHH", "hat", "hatOpen", { choke: 1 }),
         pad("Tom Lo", "tom", "tomLo"),
         pad("Tom Hi", "tom", "tomHi"),
         pad("Shaker", "perc", "shaker"),
-        pad("Ride", "cym", "ride", { delay: 0.18 }),
-        pad("Rise", "fx", "fxRise", { reverb: 0.32 }),
+        pad("Ride", "cym", "ride", { delay: 0.1 }),
+        pad("Reese", "fx", "reeseStab", { reverb: 0.16 }),
         pad("Crash", "cym", "crash"),
-        pad("Stab", "fx", "stab"),
-        pad("Pulse", "loop", "loopPulse", { mode: "loop" }),
-      ],
-    },
-    {
-      id: "acoustic",
-      name: "Acoustic",
-      bpm: 104,
-      pads: [
-        pad("Kick", "kick", "kickAcoustic"),
-        pad("Snare", "snare", "snareDust"),
-        pad("Rim", "snare", "rim"),
-        pad("CHH", "hat", "hatClosed"),
-        pad("Kick 2", "kick", "kickPunch", { volume: 0.8 }),
-        pad("Snare 2", "snare", "snare"),
-        pad("Perc", "perc", "perc"),
-        pad("OHH", "hat", "hatOpen", { choke: 1, reverb: 0.2 }),
-        pad("Tom Lo", "tom", "tomLo", { reverb: 0.16 }),
-        pad("Tom Hi", "tom", "tomHi", { reverb: 0.16 }),
-        pad("Shaker", "perc", "shaker"),
-        pad("Ride", "cym", "ride", { reverb: 0.26 }),
-        pad("Pedal", "hat", "hatPedal", { choke: 1 }),
-        pad("Crash", "cym", "crash", { reverb: 0.34, choke: 2 }),
-        pad("Stab", "fx", "stab"),
-        pad("Room", "loop", "loopPulse", { mode: "loop", volume: 0.45, reverb: 0.2 }),
+        pad("Rise", "fx", "fxRise", { reverb: 0.26 }),
+        pad("Roll", "loop", "amenBar", { mode: "loop", volume: 0.55 }),
       ],
     },
   ];

@@ -17,7 +17,7 @@ npx --yes serve -l 4173
 Öppna `http://localhost:4173` i telefonen (samma Wi-Fi) eller i Chrome DevTools device mode.
 
 1. Tryck **START SESSION** (iOS kräver en gest innan ljudet låses upp).
-2. Fyra starter kits syntetiseras i webbläsaren: Neon Trap, Boom Bap, Techno, Acoustic.
+2. Fyra starter kits syntetiseras i webbläsaren: Jungle, Roller, Neon Trap, Boom Bap. Ingen house.
 3. På iPhone: Dela → **Lägg till på hemskärmen**. På Android: Chrome-menyn → **Installera app**.
 
 ## Deploy
@@ -52,9 +52,9 @@ Loopmasters har **inget öppet tredjeparts-API** för att logga in och dra sampl
 1. Logga in på [loopmasters.com](https://www.loopmasters.com) i en vanlig webbläsare.
 2. Ladda ner pack som `.zip` (eller enskilda `.wav` / `.mp3`).
 3. I PULSE: **↓** → släpp zippen eller välj filer.
-4. Appen auto-mappar filnamn till pads: Kick/808, Snare, Clap, Closed/Open hat, Perc, Toms, Crash/Ride, FX, Loops.
+4. Appen auto-mappar one-shots till pads och **hoppar över house, vocals, Play-instrument och construction kits**.
 
-Tips för bättre mapping: behåll beskrivande namn (`Kick_808.wav`, `OHH_Room.wav`). Importerade kits sparas i sessionen (minnet). För att behålla dem: lämna fliken öppen eller exportera ditt beat som WAV.
+Bästa packs ur din samling: **Timeless Jungle / 2**, **Breakage Rolling**, **Total Science CIA**, **ZENITH Rollers**, **Loopcloud Drum Intro Kits** (inte Phil Weeks / S.K.T house). Släpp bara `One-Shots` / `Drum Hits`. Importerade jungle-kit sätts till 174 BPM och sparas i webbläsaren.
 
 ## Spelkontroller
 

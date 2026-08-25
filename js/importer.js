@@ -45,19 +45,21 @@
   }
 
   const AUDIO_EXT = /\.(wav|wave|mp3|mpeg|ogg|oga|aif|aiff|flac|m4a)$/i;
+  const SKIP_PATH = /(house|disco|nu[\s_-]?disco|tech[\s_-]?house|og house|phil weeks|s\.?k\.?t|909 fill|acapella|acapellas|vocal collection|mantra vocal|leo wood|keys|strings|brass|wind|midi\/|\/midi|serum|rex2|construction kit|melodic loop|bass loop)/i;
+  const ONESHOT_PATH = /(one[\s_-]?shot|drum hit|drum one|kicks?\/|snares?\/|hats?\/|perc\/|jungle|dnb|d&b|drum ?& ?bass|amen|break)/i;
 
   const RULES = [
     { role: "kick", re: /(kick|bd_|_bd|bassdrum|808|boom|kik)/i },
-    { role: "snare", re: /(snare|snr|sd_|_sd|rimshot)/i },
+    { role: "snare", re: /(snare|snr|sd_|_sd|rimshot|amen)/i },
     { role: "clap", re: /(clap|clp|handclap)/i },
     { role: "hat", re: /(closed[-_ ]?h|chh|hhc|hi[-_ ]?hat[-_ ]?c|hat[-_ ]?closed)/i },
     { role: "hat", re: /(open[-_ ]?h|ohh|hho|hi[-_ ]?hat[-_ ]?o|hat[-_ ]?open)/i },
     { role: "hat", re: /(hi[-_ ]?hat|hat|hh_)/i },
     { role: "tom", re: /(tom|floor)/i },
     { role: "cym", re: /(crash|ride|cym|china)/i },
-    { role: "perc", re: /(perc|shaker|tamb|conga|bongo|clave|cowbell|rim)/i },
-    { role: "fx", re: /(fx|riser|sweep|impact|stab|vox|vocal)/i },
-    { role: "loop", re: /(loop|break|groove|beat)/i },
+    { role: "perc", re: /(perc|shaker|tamb|conga|bongo|clave|cowbell|rim|top)/i },
+    { role: "fx", re: /(fx|riser|sweep|impact|stab|reese|vox|vocal)/i },
+    { role: "loop", re: /(loop|break|groove|beat|amen)/i },
   ];
 
   const SLOT_PREF = [
@@ -85,10 +87,24 @@
       .slice(0, 18);
   }
 
+  function shouldImport(name) {
+    if (!AUDIO_EXT.test(name)) return false;
+    if (SKIP_PATH.test(name) && !ONESHOT_PATH.test(name)) return false;
+    return true;
+  }
+
+  function guessBpm(name) {
+    if (/(jungle|dnb|d&b|drum ?& ?bass|roller|amen|halftime)/i.test(name)) return 174;
+    if (/(trap|808)/i.test(name)) return 140;
+    if (/(boom|bap|hip)/i.test(name)) return 92;
+    return 174;
+  }
+
   async function decodeFiles(engine, files) {
     const decoded = [];
-    for (const file of files) {
-      if (!AUDIO_EXT.test(file.name)) continue;
+    const ranked = files.slice().sort((a, b) => Number(ONESHOT_PATH.test(b.name)) - Number(ONESHOT_PATH.test(a.name)));
+    for (const file of ranked) {
+      if (!shouldImport(file.name)) continue;
       try {
         const copy = file.data.buffer.slice(file.data.byteOffset, file.data.byteOffset + file.data.byteLength);
         const buffer = await engine.ctx.decodeAudioData(copy);
@@ -133,7 +149,7 @@
     return {
       id,
       name: kitName || "Imported Pack",
-      bpm: 120,
+      bpm: guessBpm(kitName || ""),
       builtIn: false,
       pads,
     };

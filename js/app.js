@@ -11,7 +11,7 @@
     },
     {
       title: "Rec + scener",
-      body: "<ol><li>REC + PLAY spelar in med overdub. Varje scene A–D har sitt eget beat.</li><li>Importerade packs och patterns sparas i webbläsaren.</li><li>⎘ kopierar scenen, ↩ ångrar sista slaget. Exportera WAV till TikTok/IG.</li></ol>",
+      body: "<ol><li>REC + PLAY overdub. A Jungle · B Roller · C Trap · D Boom Bap.</li><li>Importera jungle/DnB one-shots — house filtreras bort.</li><li>⎘ kopierar scenen, ↩ ångrar. Exportera WAV till TikTok/IG.</li></ol>",
     },
   ];
 
@@ -22,7 +22,7 @@
     scene: 0,
     scenes: [0, 1, 2, 3],
     banks: null,
-    bpm: 132,
+    bpm: 174,
     swing: 0.08,
     quantize: true,
     qStrength: 0.7,
@@ -62,7 +62,7 @@
     return state.kits[state.kitIndex];
   }
 
-  function makeBank(kitIndex = 0, bpm = 132) {
+  function makeBank(kitIndex = 0, bpm = 174) {
     return { kitId: null, kitIndex, pattern: [], bpm, bars: 2 };
   }
 
@@ -819,7 +819,9 @@
       await state.engine.resume();
       $("boot").querySelector("p").textContent = "Bygger starter kits…";
       state.kits = await window.PulseKits.buildKits(state.engine);
-      state.banks = [0, 1, 2, 3].map((i) => makeBank(Math.min(i, state.kits.length - 1), state.kits[i]?.bpm || 132));
+      const kitOrder = ["jungle", "roller", "trap", "boombap"];
+      state.kits.sort((a, b) => kitOrder.indexOf(a.id) - kitOrder.indexOf(b.id));
+      state.banks = [0, 1, 2, 3].map((i) => makeBank(Math.min(i, state.kits.length - 1), state.kits[i]?.bpm || 174));
       try {
         const saved = await window.PulseStore.get("session");
         if (saved?.imported?.length) {
