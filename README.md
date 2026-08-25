@@ -45,6 +45,24 @@ Settings → Pages → Deploy from branch `main` / root. Repo-namn med trailing 
 
 HTTPS krävs för PWA, vibration och Web Share.
 
+## Lokal agent + Desktop-mapp
+
+Molnagenten ser inte `C:\Users\samaraj\Desktop`. En **lokal** Cursor-agent gör det.
+
+1. Öppna den här mappen i **Cursor Desktop** (inte Cloud).
+2. Agent-läge, t.ex. *“Kör tools/curate-desktop.py och lägg elite-ljud på Desktop”*.
+   Eller i PowerShell:
+
+```powershell
+python tools\curate-desktop.py
+```
+
+Scriptet **kopierar** (rör inte originalen) one-shots från Desktop/Downloads/Loopmasters-zippar till:
+
+`C:\Users\samaraj\Desktop\PULSE-Elite\`
+
+House, vocals och construction kits hoppas över. Sen i PULSE: **↓ → Skanna mapp → PULSE-Elite**.
+
 ## Loopmasters-packs
 
 Loopmasters har **inget öppet tredjeparts-API** för att logga in och dra samples till en annan app. Att skicka dina kontouppgifter via en inbäddad login vore osäkert och mot deras villkor. PULSE använder därför **Import Pack**:
