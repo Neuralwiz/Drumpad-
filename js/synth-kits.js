@@ -58,6 +58,343 @@
     osc.stop(attack + decay + 0.02);
   }
 
+  function toneAt(ctx, dest, type, freqStart, freqEnd, peak, attack, decay, when) {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freqStart, when);
+    if (freqEnd && freqEnd !== freqStart) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), when + Math.min(decay, 0.2));
+    }
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), when + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + attack + decay);
+    osc.connect(gain).connect(dest);
+    osc.start(when);
+    osc.stop(when + attack + decay + 0.03);
+  }
+
+  function playNoiseAt(ctx, dest, seconds, color, filterType, freq, q, peak, attack, decay, when) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(ctx, seconds, color);
+    const filter = ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.frequency.value = freq;
+    filter.Q.value = q;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), when + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + attack + decay);
+    src.connect(filter).connect(gain).connect(dest);
+    src.start(when);
+  }
+
+  let dummyCtx = null;
+  let amenCorePromise = null;
+
+  function allocStereo(seconds) {
+    if (!dummyCtx || dummyCtx.sampleRate !== SR) {
+      dummyCtx = new OfflineAudioContext(2, 1, SR);
+    }
+    return dummyCtx.createBuffer(2, Math.max(1, Math.ceil(SR * seconds)), SR);
+  }
+
+  function cloneBuffer(src) {
+    const dest = allocStereo(src.duration);
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      dest.copyToChannel(src.getChannelData(Math.min(ch, src.numberOfChannels - 1)), ch);
+    }
+    return dest;
+  }
+
+  function vintageBuffer(buffer) {
+    const step = 1 / 1800;
+    for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+      const data = buffer.getChannelData(ch);
+      let rumble = 0;
+      for (let i = 0; i < data.length; i += 1) {
+        const crushed = Math.round(data[i] / step) * step;
+        const pop = Math.random() < 0.00055 ? (Math.random() * 2 - 1) * 0.09 : 0;
+        rumble = rumble * 0.996 + (Math.random() * 2 - 1) * 0.0018;
+        data[i] = Math.tanh(crushed * 1.15) * 0.94 + pop + rumble;
+      }
+    }
+    return buffer;
+  }
+
+  function hitAmen(ctx, dest, kind, when, vel) {
+    switch (kind) {
+      case "k":
+        toneAt(ctx, dest, "sine", 156, 48, 0.92 * vel, 0.0015, 0.17, when);
+        toneAt(ctx, dest, "sine", 78, 46, 0.38 * vel, 0.001, 0.1, when);
+        toneAt(ctx, dest, "triangle", 1900, 420, 0.16 * vel, 0.001, 0.012, when);
+        playNoiseAt(ctx, dest, 0.03, "white", "bandpass", 220, 2.2, 0.1 * vel, 0.001, 0.018, when);
+        break;
+      case "sn":
+        toneAt(ctx, dest, "triangle", 228, 164, 0.4 * vel, 0.001, 0.09, when);
+        toneAt(ctx, dest, "sine", 186, 148, 0.24 * vel, 0.001, 0.07, when);
+        playNoiseAt(ctx, dest, 0.18, "white", "bandpass", 1720, 0.92, 0.74 * vel, 0.001, 0.12, when);
+        playNoiseAt(ctx, dest, 0.12, "pink", "bandpass", 880, 1.05, 0.3 * vel, 0.001, 0.09, when);
+        playNoiseAt(ctx, dest, 0.05, "white", "highpass", 6400, 0.55, 0.3 * vel, 0.001, 0.028, when);
+        break;
+      case "gs":
+        playNoiseAt(ctx, dest, 0.07, "white", "bandpass", 2100, 1.1, 0.22 * vel, 0.001, 0.04, when);
+        toneAt(ctx, dest, "triangle", 210, 170, 0.08 * vel, 0.001, 0.04, when);
+        break;
+      case "h":
+        playNoiseAt(ctx, dest, 0.055, "white", "highpass", 7800, 0.75, 0.2 * vel, 0.001, 0.028, when);
+        playNoiseAt(ctx, dest, 0.03, "white", "bandpass", 10400, 2.1, 0.12 * vel, 0.001, 0.016, when);
+        break;
+      case "oh":
+        playNoiseAt(ctx, dest, 0.28, "white", "highpass", 6900, 0.65, 0.22 * vel, 0.001, 0.2, when);
+        playNoiseAt(ctx, dest, 0.16, "white", "bandpass", 9800, 1.4, 0.1 * vel, 0.001, 0.12, when);
+        break;
+      case "cr":
+        playNoiseAt(ctx, dest, 0.9, "white", "highpass", 3800, 0.42, 0.38 * vel, 0.002, 0.72, when);
+        playNoiseAt(ctx, dest, 0.25, "white", "bandpass", 7600, 0.8, 0.16 * vel, 0.001, 0.18, when);
+        break;
+      default: {
+        const _never = kind;
+        void _never;
+      }
+    }
+  }
+
+  const JUNGLE_BPM = 164;
+  const AMEN_STEPS = 32;
+
+  const AMEN_GROOVE = [
+    ["k", "h"], ["h"], ["sn", "h"], ["k", "h"],
+    ["k", "h"], ["h"], ["sn", "h"], ["h"],
+    ["h"], ["k", "h"], ["sn", "h"], ["h"],
+    ["k", "h"], ["h"], ["sn", "oh"], ["h"],
+    ["k", "h"], ["h"], ["sn", "h"], ["k", "gs", "h"],
+    ["k", "h"], ["h"], ["sn", "h"], ["gs", "h"],
+    ["h"], ["k", "h"], ["sn", "h"], ["h"],
+    ["k", "h"], ["gs", "h"], ["sn", "oh"], ["h"],
+  ];
+
+  const AMEN_CHOP_MAP = [
+    2, 2, 2, 3, 6, 6, 7, 2,
+    10, 10, 10, 11, 14, 14, 15, 6,
+    2, 6, 6, 6, 10, 14, 14, 2,
+    0, 0, 4, 4, 14, 14, 14, 15,
+  ];
+
+  const AMEN_RIDE_BARS = [
+    "full", "full", "chop", "chop",
+    "snare", "full", "stutter", "full",
+    "chop", "snare", "full",
+  ];
+
+  function stepTime(step) {
+    const sixteenth = 60 / JUNGLE_BPM / 4;
+    const swing = step % 2 === 1 ? sixteenth * 0.07 : 0;
+    return step * sixteenth + swing;
+  }
+
+  async function renderAmenGroove() {
+    const loopDur = stepTime(AMEN_STEPS);
+    const rendered = await render(loopDur + 0.28, (ctx) => {
+      const bus = ctx.createGain();
+      bus.gain.value = 1;
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 42;
+      const mid = ctx.createBiquadFilter();
+      mid.type = "peaking";
+      mid.frequency.value = 2050;
+      mid.gain.value = 3.8;
+      mid.Q.value = 0.75;
+      const air = ctx.createBiquadFilter();
+      air.type = "highshelf";
+      air.frequency.value = 6500;
+      air.gain.value = 1.6;
+      bus.connect(hp).connect(mid).connect(air).connect(ctx.destination);
+
+      AMEN_GROOVE.forEach((hits, step) => {
+        const when = stepTime(step);
+        hits.forEach((kind) => {
+          const vel = kind === "k" ? 0.92 : kind === "sn" ? 1 : kind === "gs" ? 0.55 : 0.72;
+          hitAmen(ctx, bus, kind, when, vel);
+        });
+      });
+    });
+    const dest = allocStereo(loopDur);
+    const loopLen = dest.length;
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      const src = rendered.getChannelData(Math.min(ch, rendered.numberOfChannels - 1));
+      const out = dest.getChannelData(ch);
+      out.set(src.subarray(0, loopLen));
+      for (let i = loopLen; i < src.length; i += 1) {
+        out[i - loopLen] += src[i];
+      }
+    }
+    return vintageBuffer(dest);
+  }
+
+  function getAmenCore() {
+    if (!amenCorePromise) amenCorePromise = renderAmenGroove();
+    return amenCorePromise;
+  }
+
+  function sliceCopy(dest, destOff, src, srcStart, srcLen, gain) {
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      const d = dest.getChannelData(ch);
+      const s = src.getChannelData(Math.min(ch, src.numberOfChannels - 1));
+      for (let i = 0; i < srcLen && destOff + i < d.length; i += 1) {
+        d[destOff + i] += (s[srcStart + i] || 0) * gain;
+      }
+    }
+  }
+
+  function rearrangeAmen(src, map) {
+    const dest = allocStereo(src.duration);
+    const slice = Math.floor(src.length / AMEN_STEPS);
+    map.forEach((from, to) => {
+      sliceCopy(dest, to * slice, src, from * slice, slice, 1);
+    });
+    return dest;
+  }
+
+  async function renderAmenFill() {
+    const core = await getAmenCore();
+    const dest = cloneBuffer(core);
+    const slice = Math.floor(core.length / AMEN_STEPS);
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      dest.getChannelData(ch).fill(0, 24 * slice);
+    }
+    const roll = await render(stepTime(8) + 0.4, (ctx) => {
+      const bus = ctx.createGain();
+      bus.connect(ctx.destination);
+      for (let i = 0; i < 16; i += 1) {
+        const when = (60 / JUNGLE_BPM / 8) * i;
+        const vel = 0.55 + (i / 16) * 0.45;
+        hitAmen(ctx, bus, i === 15 ? "cr" : "sn", when, vel);
+      }
+    });
+    const start = 24 * slice;
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      sliceCopy(dest, start, roll, 0, roll.length, 1);
+    }
+    return dest;
+  }
+
+  async function renderAmenRide() {
+    const core = await getAmenCore();
+    const chop = rearrangeAmen(core, AMEN_CHOP_MAP);
+    const dest = allocStereo(30);
+    const bar = Math.floor(core.length / 2);
+    const sixteenth = Math.floor(core.length / AMEN_STEPS);
+    let offset = 0;
+    AMEN_RIDE_BARS.forEach((kind, barIndex) => {
+      if (offset + bar > dest.length) return;
+      if (kind === "full") {
+        const srcOff = (barIndex % 2) * bar;
+        sliceCopy(dest, offset, core, srcOff, bar, 1);
+      } else if (kind === "chop") {
+        const srcOff = (barIndex % 2) * bar;
+        sliceCopy(dest, offset, chop, srcOff, bar, 1);
+      } else if (kind === "snare") {
+        for (let i = 0; i < 16; i += 1) {
+          const from = [2, 6, 10, 14][i % 4] * sixteenth;
+          sliceCopy(dest, offset + i * sixteenth, core, from, sixteenth, 0.92);
+        }
+      } else if (kind === "stutter") {
+        const hit = 6 * sixteenth;
+        for (let i = 0; i < 16; i += 1) {
+          const len = i % 4 === 3 ? sixteenth : Math.floor(sixteenth * 0.55);
+          sliceCopy(dest, offset + i * sixteenth, core, hit, len, 0.88 + (i % 4) * 0.03);
+        }
+      } else {
+        const _never = kind;
+        void _never;
+      }
+      offset += bar;
+    });
+    const fade = Math.floor(SR * 2.4);
+    for (let ch = 0; ch < dest.numberOfChannels; ch += 1) {
+      const data = dest.getChannelData(ch);
+      for (let i = 0; i < fade; i += 1) {
+        data[i] *= i / fade;
+        const back = data.length - 1 - i;
+        if (back >= 0) data[back] *= i / fade;
+      }
+    }
+    return dest;
+  }
+
+  function padEnvelope(t, dur) {
+    const attack = 1.05;
+    const release = 3.4;
+    if (t < attack) return (t / attack) ** 1.15;
+    if (t > dur - release) return Math.max(0, (dur - t) / release) ** 1.05;
+    return 1;
+  }
+
+  function oscSample(type, phase) {
+    const p = phase - Math.floor(phase);
+    switch (type) {
+      case "sine":
+        return Math.sin(p * Math.PI * 2);
+      case "triangle":
+        return 1 - 4 * Math.abs(p - 0.5);
+      case "square":
+        return p < 0.5 ? 1 : -1;
+      case "saw":
+        return 2 * p - 1;
+      default: {
+        const _never = type;
+        void _never;
+        return 0;
+      }
+    }
+  }
+
+  function fillLushPad(seconds, layers, opts = {}) {
+    const buf = allocStereo(seconds);
+    const left = buf.getChannelData(0);
+    const right = buf.getChannelData(1);
+    const voices = layers.map((layer, index) => ({
+      type: layer.type || "saw",
+      freq: layer.freq,
+      amp: layer.amp ?? 0.08,
+      phase: (index * 0.19) % 1,
+      detune: layer.detune || 0,
+    }));
+    const bright0 = opts.bright0 ?? 1400;
+    const bright1 = opts.bright1 ?? 2800;
+    const move = opts.move ?? 0.08;
+    const drive = opts.drive ?? 1.35;
+    const air = opts.air ?? 0.04;
+    let lpL = 0;
+    let lpR = 0;
+    for (let i = 0; i < buf.length; i += 1) {
+      const t = i / SR;
+      const env = padEnvelope(t, seconds);
+      const sweep = t / seconds;
+      const lfo = 0.5 + 0.5 * Math.sin(t * move * Math.PI * 2);
+      const cut = bright0 + (bright1 - bright0) * sweep * 0.72 + lfo * (opts.lfoHz ?? 380);
+      const coeff = Math.exp((-2 * Math.PI * Math.max(80, cut)) / SR);
+      let sl = 0;
+      let sr = 0;
+      for (const voice of voices) {
+        const freq = voice.freq * (1 + voice.detune);
+        voice.phase += freq / SR;
+        if (voice.phase >= 1) voice.phase -= Math.floor(voice.phase);
+        sl += oscSample(voice.type, voice.phase) * voice.amp;
+        sr += oscSample(voice.type, voice.phase + 0.008 + lfo * 0.004) * voice.amp;
+      }
+      sl += (Math.random() * 2 - 1) * air;
+      sr += (Math.random() * 2 - 1) * air;
+      lpL = lpL * coeff + sl * (1 - coeff);
+      lpR = lpR * coeff + sr * (1 - coeff);
+      left[i] = Math.tanh(lpL * drive) * env;
+      right[i] = Math.tanh(lpR * drive) * env;
+    }
+    return Promise.resolve(buf);
+  }
+
   const recipes = {
     kick808: () => render(1.05, (ctx) => {
       tone(ctx, "sine", 172, 38, 1, 0.002, 0.88);
@@ -186,6 +523,46 @@
         osc.stop(t + 0.1);
       }
     }),
+    amenLoop: async () => cloneBuffer(await getAmenCore()),
+    amenChop: async () => rearrangeAmen(await getAmenCore(), AMEN_CHOP_MAP),
+    amenFill: () => renderAmenFill(),
+    amenRide: () => renderAmenRide(),
+    padReese: () => fillLushPad(30, [
+      { type: "square", freq: 51.91, amp: 0.16, detune: -0.006 },
+      { type: "square", freq: 51.91, amp: 0.16, detune: 0.007 },
+      { type: "saw", freq: 51.91, amp: 0.08, detune: 0.002 },
+      { type: "sine", freq: 25.96, amp: 0.14 },
+      { type: "sine", freq: 103.83, amp: 0.05 },
+    ], { bright0: 280, bright1: 720, move: 0.045, drive: 1.8, lfoHz: 90, air: 0.012 }),
+    padWarm: () => fillLushPad(30, [
+      { type: "saw", freq: 138.59, amp: 0.07, detune: -0.004 },
+      { type: "saw", freq: 138.59, amp: 0.07, detune: 0.005 },
+      { type: "saw", freq: 164.81, amp: 0.055 },
+      { type: "saw", freq: 207.65, amp: 0.05, detune: 0.003 },
+      { type: "saw", freq: 246.94, amp: 0.04 },
+      { type: "sine", freq: 311.13, amp: 0.045 },
+      { type: "sine", freq: 69.3, amp: 0.08 },
+      { type: "triangle", freq: 415.3, amp: 0.03 },
+    ], { bright0: 900, bright1: 2600, move: 0.07, drive: 1.28, lfoHz: 420, air: 0.03 }),
+    padChoir: () => fillLushPad(30, [
+      { type: "sine", freq: 110, amp: 0.1 },
+      { type: "sine", freq: 164.81, amp: 0.08, detune: 0.002 },
+      { type: "sine", freq: 220, amp: 0.07 },
+      { type: "sine", freq: 261.63, amp: 0.06, detune: -0.002 },
+      { type: "sine", freq: 329.63, amp: 0.05 },
+      { type: "triangle", freq: 440, amp: 0.035 },
+      { type: "sine", freq: 554.37, amp: 0.028 },
+      { type: "sine", freq: 55, amp: 0.06 },
+    ], { bright0: 1600, bright1: 4200, move: 0.055, drive: 1.08, lfoHz: 260, air: 0.05 }),
+    padHornet: () => fillLushPad(30, [
+      { type: "saw", freq: 87.31, amp: 0.07, detune: -0.005 },
+      { type: "saw", freq: 87.31, amp: 0.07, detune: 0.006 },
+      { type: "saw", freq: 130.81, amp: 0.055 },
+      { type: "saw", freq: 207.65, amp: 0.05 },
+      { type: "saw", freq: 233.08, amp: 0.04, detune: 0.003 },
+      { type: "triangle", freq: 311.13, amp: 0.04 },
+      { type: "sine", freq: 43.65, amp: 0.07 },
+    ], { bright0: 620, bright1: 1900, move: 0.06, drive: 1.42, lfoHz: 340, air: 0.022 }),
   };
 
   const roleMeta = {
@@ -197,6 +574,7 @@
     tom: { color: "#ffb020", choke: 0 },
     cym: { color: "#c5a7ff", choke: 2 },
     fx: { color: "#ff7ad1", choke: 0 },
+    pad: { color: "#e8c36a", choke: 0 },
     loop: { color: "#e8f7ff", choke: 0 },
   };
 
@@ -222,7 +600,89 @@
     };
   }
 
+  const lushPad = {
+    mode: "oneshot",
+    attack: 0.16,
+    decay: 2.8,
+    sustain: 0.84,
+    release: 2.6,
+    filter: "lowpass",
+  };
+
   const kitDefs = [
+    {
+      id: "jungle",
+      name: "94 Amen",
+      bpm: 164,
+      pads: [
+        pad("Amen", "loop", "amenLoop", {
+          mode: "loop",
+          choke: 3,
+          color: "#ffb020",
+          delay: 0.16,
+          reverb: 0.1,
+          cutoff: 13000,
+        }),
+        pad("Chop", "loop", "amenChop", {
+          mode: "loop",
+          choke: 3,
+          color: "#ff7a18",
+          delay: 0.2,
+          reverb: 0.12,
+        }),
+        pad("Fill", "loop", "amenFill", {
+          mode: "oneshot",
+          choke: 3,
+          color: "#ff4d4d",
+          reverb: 0.18,
+          delay: 0.1,
+        }),
+        pad("Ride", "loop", "amenRide", {
+          mode: "oneshot",
+          choke: 3,
+          color: "#ffd36a",
+          attack: 0.04,
+          decay: 1.2,
+          sustain: 0.8,
+          release: 1.8,
+          reverb: 0.16,
+          delay: 0.12,
+          volume: 0.92,
+        }),
+        pad("Reese", "pad", "padReese", {
+          ...lushPad,
+          color: "#5cff7a",
+          volume: 0.58,
+          cutoff: 3800,
+          reverb: 0.2,
+          delay: 0.08,
+        }),
+        pad("Warm", "pad", "padWarm", {
+          ...lushPad,
+          color: "#e8c36a",
+          volume: 0.62,
+          cutoff: 8200,
+          reverb: 0.5,
+          delay: 0.24,
+        }),
+        pad("Choir", "pad", "padChoir", {
+          ...lushPad,
+          color: "#c5a7ff",
+          volume: 0.6,
+          cutoff: 10000,
+          reverb: 0.58,
+          delay: 0.28,
+        }),
+        pad("Hornet", "pad", "padHornet", {
+          ...lushPad,
+          color: "#ff6b3c",
+          volume: 0.6,
+          cutoff: 6400,
+          reverb: 0.42,
+          delay: 0.2,
+        }),
+      ],
+    },
     {
       id: "trap",
       name: "Neon Trap",
@@ -319,15 +779,18 @@
 
   async function buildKits(engine) {
     SR = engine.ctx.sampleRate || 44100;
+    dummyCtx = new OfflineAudioContext(2, 1, SR);
+    amenCorePromise = null;
+    const needed = [...new Set(kitDefs.flatMap((def) => def.pads.map((src) => src.recipe)))];
     const cache = new Map();
+    await Promise.all(needed.map(async (id) => {
+      cache.set(id, await recipes[id]());
+    }));
     const kits = [];
     for (const def of kitDefs) {
       const pads = [];
       for (let i = 0; i < def.pads.length; i += 1) {
         const src = def.pads[i];
-        if (!cache.has(src.recipe)) {
-          cache.set(src.recipe, await recipes[src.recipe]());
-        }
         const bufferId = `${def.id}-${i}`;
         engine.registerBuffer(bufferId, cache.get(src.recipe));
         pads.push({ ...src, index: i, bufferId });

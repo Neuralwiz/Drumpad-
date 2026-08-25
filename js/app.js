@@ -3,7 +3,7 @@
   const TUTORIAL = [
     {
       title: "Välkommen till PULSE",
-      body: "<p>En touch-optimerad finger-drumming-padd. 16 pads, låg latens, multi-touch och groove.</p>",
+      body: "<p>Oldschool jungle-padd. Amen-breaks, 30-sekunders pads, låg latens och multi-touch.</p>",
     },
     {
       title: "Spela",
@@ -22,7 +22,7 @@
     scene: 0,
     scenes: [0, 1, 2, 3],
     banks: null,
-    bpm: 132,
+    bpm: 164,
     swing: 0.08,
     quantize: true,
     qStrength: 0.7,
@@ -62,7 +62,7 @@
     return state.kits[state.kitIndex];
   }
 
-  function makeBank(kitIndex = 0, bpm = 132) {
+  function makeBank(kitIndex = 0, bpm = 164) {
     return { kitId: null, kitIndex, pattern: [], bpm, bars: 2 };
   }
 
@@ -159,9 +159,21 @@
     ctx.stroke();
   }
 
+  function padGridDims(count) {
+    if (count <= 4) return { cols: 2, rows: Math.max(2, Math.ceil(count / 2)) };
+    if (count <= 6) return { cols: 3, rows: 2 };
+    if (count <= 8) return { cols: 4, rows: 2 };
+    if (count <= 9) return { cols: 3, rows: 3 };
+    return { cols: 4, rows: Math.ceil(count / 4) };
+  }
+
   function renderPads() {
     const kit = currentKit();
     if (!kit) return;
+    const { cols, rows } = padGridDims(kit.pads.length);
+    els.grid.style.setProperty("--pad-cols", String(cols));
+    els.grid.style.setProperty("--pad-rows", String(rows));
+    els.grid.classList.toggle("is-compact", kit.pads.length <= 9);
     els.grid.innerHTML = "";
     kit.pads.forEach((pad) => {
       const btn = document.createElement("button");
@@ -591,7 +603,7 @@
       state.kits.push(kit);
       fillKitSelect();
       setKit(state.kits.length - 1);
-      $("import-status").textContent = `${kit.name} mappad till 16 pads. Sparas i webbläsaren.`;
+      $("import-status").textContent = `${kit.name} mappad till pads. Sparas i webbläsaren.`;
       toast("Pack importerat · sparat");
       persistSoon();
     } catch (error) {
@@ -817,9 +829,9 @@
     $("btn-start").addEventListener("click", async () => {
       state.engine = new window.PulseAudio.AudioEngine();
       await state.engine.resume();
-      $("boot").querySelector("p").textContent = "Bygger starter kits…";
+      $("boot").querySelector("p").textContent = "Bygger amen-breaks och 30-sekunders pads…";
       state.kits = await window.PulseKits.buildKits(state.engine);
-      state.banks = [0, 1, 2, 3].map((i) => makeBank(Math.min(i, state.kits.length - 1), state.kits[i]?.bpm || 132));
+      state.banks = [0, 1, 2, 3].map((i) => makeBank(Math.min(i, state.kits.length - 1), state.kits[i]?.bpm || 164));
       try {
         const saved = await window.PulseStore.get("session");
         if (saved?.imported?.length) {
