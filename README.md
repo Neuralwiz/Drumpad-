@@ -1,6 +1,6 @@
 # PULSE — Finger Drumming PWA
 
-Touch-optimerad, mobile-first drum pad för iOS Safari och Android Chrome. Ren HTML/CSS/JS + Web Audio API, installerbar som Progressive Web App.
+Touch-optimerad, mobile-first jungle-padd för iOS Safari och Android Chrome. Ren HTML/CSS/JS + Web Audio API, installerbar som Progressive Web App. Default-kitet är oldschool jungle: amen-breaks plus ~30-sekunders pads på 8 knappar.
 
 ## Kör lokalt
 
@@ -17,7 +17,7 @@ npx --yes serve -l 4173
 Öppna `http://localhost:4173` i telefonen (samma Wi-Fi) eller i Chrome DevTools device mode.
 
 1. Tryck **START SESSION** (iOS kräver en gest innan ljudet låses upp).
-2. Fyra starter kits syntetiseras i webbläsaren: Neon Trap, Boom Bap, Techno, Acoustic.
+2. Starter kits syntetiseras i webbläsaren. Default är **94 Amen** (8 knappar): Amen, Chop, Fill, Ride plus Reese/Warm/Choir/Hornet-pads på ~30 sekunder. Övriga kits: Neon Trap, Boom Bap, Techno, Acoustic.
 3. På iPhone: Dela → **Lägg till på hemskärmen**. På Android: Chrome-menyn → **Installera app**.
 
 ## Deploy

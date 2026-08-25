@@ -6,13 +6,13 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
     />
-    <meta name="theme-color" content="#05060c" />
+    <meta name="theme-color" content="#070804" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PULSE" />
-    <meta name="description" content="Touch-optimerad finger drumming PWA med låg latens och neon-pads." />
-    <title>PULSE — Finger Drumming</title>
+    <meta name="description" content="Oldschool jungle-padd med amen-breaks, 30-sekunders pads och låg latens." />
+    <title>PULSE — Oldschool Jungle</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-180.png" />
@@ -23,7 +23,7 @@
       <header class="app-header">
         <div class="brand">
           <strong>PULSE</strong>
-          <span>Finger drums</span>
+          <span>Oldschool jungle</span>
         </div>
         <div class="scene-row" id="scene-row" role="tablist" aria-label="Scenes">
           <button class="scene-btn active" data-scene="0">A</button>
@@ -70,8 +70,8 @@
         <div class="transport-row">
           <div class="ctl grow">
             <label for="bpm">BPM</label>
-            <input id="bpm" type="range" min="60" max="200" value="132" />
-            <output id="bpm-out">132</output>
+            <input id="bpm" type="range" min="60" max="200" value="164" />
+            <output id="bpm-out">164</output>
           </div>
           <div class="ctl grow">
             <label for="swing">Swing</label>
@@ -86,11 +86,11 @@
         <div class="transport-row">
           <div class="ctl grow">
             <label for="reverb">Verb</label>
-            <input id="reverb" type="range" min="0" max="100" value="22" />
+            <input id="reverb" type="range" min="0" max="100" value="34" />
           </div>
           <div class="ctl grow">
             <label for="delay">Delay</label>
-            <input id="delay" type="range" min="0" max="100" value="12" />
+            <input id="delay" type="range" min="0" max="100" value="18" />
           </div>
           <label class="toggle"><input type="checkbox" id="chk-sidechain" checked />Duck</label>
           <button class="icon-btn" id="btn-undo" title="Ångra sista slaget">↩</button>
@@ -107,8 +107,8 @@
     <div class="boot" id="boot">
       <div>
         <h1>PULSE</h1>
-        <p>Tryck för att väcka ljudmotorn. iOS kräver en gest innan Web Audio startar.</p>
-        <button id="btn-start" type="button">START SESSION</button>
+        <p>Oldschool jungle. Tryck för att väcka amen-breaks och långa pads. iOS kräver en gest innan Web Audio startar.</p>
+        <button id="btn-start" type="button">DROP THE AMEN</button>
       </div>
     </div>
 

@@ -98,7 +98,7 @@
     }
   }
 
-  function makeImpulse(ctx, seconds = 1.8, decay = 2.2) {
+  function makeImpulse(ctx, seconds = 2.8, decay = 2.6) {
     const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
     const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
     for (let channel = 0; channel < 2; channel += 1) {
@@ -134,7 +134,7 @@
       this.reverb = this.ctx.createConvolver();
       this.reverb.buffer = makeImpulse(this.ctx);
       this.reverbWet = this.ctx.createGain();
-      this.reverbWet.gain.value = 0.22;
+      this.reverbWet.gain.value = 0.34;
 
       this.delayIn = this.ctx.createGain();
       this.delay = this.ctx.createDelay(1.2);
@@ -142,7 +142,7 @@
       this.delayFb = this.ctx.createGain();
       this.delayFb.gain.value = 0.32;
       this.delayWet = this.ctx.createGain();
-      this.delayWet.gain.value = 0.12;
+      this.delayWet.gain.value = 0.18;
       this.delayFilter = this.ctx.createBiquadFilter();
       this.delayFilter.type = "lowpass";
       this.delayFilter.frequency.value = 3200;
