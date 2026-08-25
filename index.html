@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="theme-color" content="#05060c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PULSE" />
+    <meta name="description" content="Touch-optimerad finger drumming PWA med låg latens och neon-pads." />
+    <title>PULSE — Finger Drumming</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+    <link rel="stylesheet" href="./css/app.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="brand">
+          <strong>PULSE</strong>
+          <span>Finger drums</span>
+        </div>
+        <div class="scene-row" id="scene-row" role="tablist" aria-label="Scenes">
+          <button class="scene-btn active" data-scene="0">A</button>
+          <button class="scene-btn" data-scene="1">B</button>
+          <button class="scene-btn" data-scene="2">C</button>
+          <button class="scene-btn" data-scene="3">D</button>
+        </div>
+        <div class="metro-pulse" id="metro-pulse" aria-hidden="true"></div>
+        <div class="header-actions">
+          <select class="kit-select" id="kit-select" aria-label="Kit"></select>
+          <button class="icon-btn" id="btn-edit" aria-pressed="false" title="Pad-redigering">✎</button>
+          <button class="icon-btn" id="btn-roll" aria-pressed="false" title="Roll-läge">⟳</button>
+          <button class="icon-btn" id="btn-import" title="Importera pack">↓</button>
+          <button class="icon-btn" id="btn-share" title="Exportera / dela">⇧</button>
+          <button class="icon-btn" id="btn-settings" title="Inställningar">⚙</button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <div class="playhead" id="playhead" aria-hidden="true"></div>
+        <div class="pad-wrap">
+          <div class="pad-grid" id="pad-grid" aria-label="Drum pads"></div>
+        </div>
+      </main>
+
+      <footer class="transport">
+        <div class="transport-row">
+          <button class="play-btn" id="btn-play" aria-pressed="false">PLAY</button>
+          <button class="rec-btn" id="btn-record" aria-pressed="false">REC</button>
+          <button class="tap-btn" id="btn-tap">TAP</button>
+          <label class="toggle"><input type="checkbox" id="chk-metro" />Click</label>
+          <label class="toggle"><input type="checkbox" id="chk-quantize" checked />Q</label>
+          <div class="ctl">
+            <label for="bars">Bars</label>
+            <select id="bars">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="8">8</option>
+            </select>
+          </div>
+          <div class="meta" id="pattern-meta">P1 · 0 hits</div>
+        </div>
+        <div class="transport-row">
+          <div class="ctl grow">
+            <label for="bpm">BPM</label>
+            <input id="bpm" type="range" min="60" max="200" value="132" />
+            <output id="bpm-out">132</output>
+          </div>
+          <div class="ctl grow">
+            <label for="swing">Swing</label>
+            <input id="swing" type="range" min="0" max="75" value="8" />
+            <output id="swing-out">8%</output>
+          </div>
+          <div class="ctl grow">
+            <label for="master">Vol</label>
+            <input id="master" type="range" min="0" max="100" value="82" />
+          </div>
+        </div>
+        <div class="transport-row">
+          <div class="ctl grow">
+            <label for="reverb">Verb</label>
+            <input id="reverb" type="range" min="0" max="100" value="22" />
+          </div>
+          <div class="ctl grow">
+            <label for="delay">Delay</label>
+            <input id="delay" type="range" min="0" max="100" value="12" />
+          </div>
+          <label class="toggle"><input type="checkbox" id="chk-sidechain" checked />Duck</label>
+          <button class="icon-btn" id="btn-undo" title="Ångra sista slaget">↩</button>
+          <button class="icon-btn" id="btn-copy" title="Kopiera scene">⎘</button>
+          <button class="icon-btn" id="btn-clear" title="Rensa pattern">⌫</button>
+        </div>
+      </footer>
+    </div>
+
+    <canvas class="particle-layer" id="particles"></canvas>
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
+    <div class="status-toast" id="toast"></div>
+
+    <div class="boot" id="boot">
+      <div>
+        <h1>PULSE</h1>
+        <p>Tryck för att väcka ljudmotorn. iOS kräver en gest innan Web Audio startar.</p>
+        <button id="btn-start" type="button">START SESSION</button>
+      </div>
+    </div>
+
+    <div class="tutorial hidden" id="tutorial">
+      <div class="tutorial-card">
+        <h2 id="tutorial-title">Välkommen till padden</h2>
+        <div id="tutorial-body"></div>
+        <div class="sheet-actions" style="display: flex; gap: 8px; margin-top: 14px">
+          <button class="primary" id="tutorial-next" type="button">Nästa</button>
+          <button id="tutorial-skip" type="button" style="background: #182033; color: #d5e6ff">Hoppa över</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="sheet" id="sheet-settings" aria-hidden="true">
+      <h2>Inställningar</h2>
+      <div class="settings-grid">
+        <label>Latency compensation (ms)
+          <input id="latency-comp" type="range" min="-40" max="80" value="0" />
+        </label>
+        <label>Lookahead (ms)
+          <input id="lookahead" type="range" min="10" max="80" value="25" />
+        </label>
+        <label>Haptics
+          <input id="chk-haptics" type="checkbox" checked />
+        </label>
+        <label>Partiklar
+          <input id="chk-particles" type="checkbox" checked />
+        </label>
+        <label>Quantize-styrka
+          <input id="q-strength" type="range" min="0" max="100" value="70" />
+        </label>
+        <label>Roll-upplösning
+          <select id="roll-div">
+            <option value="8">8th</option>
+            <option value="16" selected>16th</option>
+            <option value="32">32nd</option>
+          </select>
+        </label>
+        <p class="meta" id="engine-info">Audio: —</p>
+      </div>
+      <div class="sheet-actions" style="margin-top: 12px">
+        <button class="primary" data-close="sheet-settings" type="button">Klar</button>
+      </div>
+    </aside>
+
+    <aside class="sheet" id="sheet-import" aria-hidden="true">
+      <h2>Importera Loopmasters-pack</h2>
+      <p class="meta">
+        Loopmasters har inget öppet tredjeparts-API för inloggning. Ladda ner packs i webbläsaren
+        och släpp .zip / .wav / .mp3 här. PULSE auto-mappar kick, snare, hats, perc, toms och FX.
+      </p>
+      <div class="dropzone" id="dropzone">
+        Dra in en zip eller one-shots, eller välj filer
+        <div style="margin-top: 10px">
+          <input class="file-input" id="file-input" type="file" accept=".zip,.wav,.mp3,.ogg,.aif,.aiff,.flac,audio/*" multiple />
+        </div>
+      </div>
+      <p class="meta" id="import-status"></p>
+      <div class="sheet-actions" style="margin-top: 12px">
+        <button class="primary" data-close="sheet-import" type="button">Stäng</button>
+      </div>
+    </aside>
+
+    <aside class="sheet" id="sheet-inspector" aria-hidden="true">
+      <h2 id="inspector-title">Pad</h2>
+      <div class="inspector-grid">
+        <label>Volym <input id="pad-vol" type="range" min="0" max="150" value="100" /></label>
+        <label>Pitch (st) <input id="pad-pitch" type="range" min="-12" max="12" value="0" /></label>
+        <label>Attack <input id="pad-a" type="range" min="0" max="200" value="1" /></label>
+        <label>Decay <input id="pad-d" type="range" min="10" max="2000" value="180" /></label>
+        <label>Sustain <input id="pad-s" type="range" min="0" max="100" value="0" /></label>
+        <label>Release <input id="pad-r" type="range" min="10" max="2000" value="80" /></label>
+        <label>Filter
+          <select id="pad-filter">
+            <option value="lowpass">Lowpass</option>
+            <option value="highpass">Highpass</option>
+          </select>
+        </label>
+        <label>Cutoff <input id="pad-cutoff" type="range" min="120" max="16000" value="12000" /></label>
+        <label>Reverb send <input id="pad-rev" type="range" min="0" max="100" value="8" /></label>
+        <label>Delay send <input id="pad-dly" type="range" min="0" max="100" value="0" /></label>
+        <label>Läge
+          <select id="pad-mode">
+            <option value="oneshot">One-shot</option>
+            <option value="loop">Loop</option>
+          </select>
+        </label>
+        <label>Choke-grupp
+          <select id="pad-choke">
+            <option value="0">Ingen</option>
+            <option value="1">Hats</option>
+            <option value="2">Cymbals</option>
+            <option value="3">Custom</option>
+          </select>
+        </label>
+      </div>
+      <div class="sheet-actions" style="margin-top: 12px">
+        <button class="primary" data-close="sheet-inspector" type="button">Klar</button>
+      </div>
+    </aside>
+
+    <aside class="sheet" id="sheet-share" aria-hidden="true">
+      <h2>Exportera beat</h2>
+      <p class="meta">Rendera loopen till WAV och dela till Instagram / TikTok via systemets share-sheet.</p>
+      <div class="sheet-actions" style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button class="primary" id="btn-export-wav" type="button">Ladda ner WAV</button>
+        <button class="primary" id="btn-native-share" type="button">Dela…</button>
+        <button data-close="sheet-share" type="button" style="background: #182033; color: #d5e6ff">Stäng</button>
+      </div>
+    </aside>
+
+    <div class="install-bar hidden" id="install-bar">
+      <span>Lägg till PULSE på hemskärmen</span>
+      <button class="primary" id="btn-install" type="button" style="min-height: 32px; padding: 0 12px">Installera</button>
+      <button id="btn-install-dismiss" type="button">✕</button>
+    </div>
+
+    <script src="./js/audio-engine.js"></script>
+    <script src="./js/synth-kits.js"></script>
+    <script src="./js/importer.js"></script>
+    <script src="./js/store.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>
