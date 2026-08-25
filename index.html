@@ -156,16 +156,18 @@
     </aside>
 
     <aside class="sheet" id="sheet-import" aria-hidden="true">
-      <h2>Importera jungle / DnB</h2>
+      <h2>Skanna desktop-bibliotek</h2>
       <p class="meta">
-        Ingen Loopmasters-inloggning — släpp zip eller one-shots. House, vocals, Play-instrument
-        och construction kits filtreras bort. Bäst: Timeless Jungle, Breakage, Total Science, ZENITH.
-        Ta bara mapparna One-Shots / Drum Hits.
+        Cloud-agenten når inte din Windows-disk. På den här datorn: välj mappen med Loopmasters
+        (t.ex. Desktop). PULSE plockar bara korta jungle/DnB-one-shots — house, vox, cinematic
+        och construction kits slängs. Bygger upp till 3 elite-kit.
       </p>
       <div class="dropzone" id="dropzone">
-        Dra in en zip eller one-shots, eller välj filer
-        <div style="margin-top: 10px">
+        Dra in zip/one-shots, eller skanna en hel mapp
+        <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center">
+          <button class="primary" id="btn-scan-folder" type="button" style="min-height: 40px">Skanna mapp</button>
           <input class="file-input" id="file-input" type="file" accept=".zip,.wav,.mp3,.ogg,.aif,.aiff,.flac,audio/*" multiple />
+          <input class="hidden file-input" id="dir-input" type="file" webkitdirectory directory multiple />
         </div>
       </div>
       <p class="meta" id="import-status"></p>

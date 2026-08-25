@@ -102,9 +102,11 @@
 
   async function decodeFiles(engine, files) {
     const decoded = [];
-    const ranked = files.slice().sort((a, b) => Number(ONESHOT_PATH.test(b.name)) - Number(ONESHOT_PATH.test(a.name)));
+    const ranked = files
+      .filter((file) => shouldImport(file.name) && file.data.byteLength < 8 * 1024 * 1024)
+      .sort((a, b) => Number(ONESHOT_PATH.test(b.name)) - Number(ONESHOT_PATH.test(a.name)))
+      .slice(0, 280);
     for (const file of ranked) {
-      if (!shouldImport(file.name)) continue;
       try {
         const copy = file.data.buffer.slice(file.data.byteOffset, file.data.byteOffset + file.data.byteLength);
         const buffer = await engine.ctx.decodeAudioData(copy);
@@ -116,13 +118,57 @@
     return decoded;
   }
 
+  function peakOf(buffer) {
+    const data = buffer.getChannelData(0);
+    let peak = 0;
+    const step = Math.max(1, Math.floor(data.length / 480));
+    for (let i = 0; i < data.length; i += step) {
+      const sample = Math.abs(data[i]);
+      if (sample > peak) peak = sample;
+    }
+    return peak;
+  }
+
+  function qualityScore(item) {
+    const name = item.name.toLowerCase();
+    const duration = item.buffer.duration;
+    let score = 0;
+    if (ONESHOT_PATH.test(name)) score += 24;
+    if (/(jungle|amen|timeless|breakage|total science|zenith|cia|roller|low res)/i.test(name)) score += 20;
+    if (SKIP_PATH.test(name)) score -= 90;
+    if (item.role === "loop") {
+      if (duration >= 0.45 && duration <= 6) score += 12;
+      else score -= 12;
+    } else if (duration >= 0.045 && duration <= 1.7) {
+      score += 30;
+    } else if (duration > 3) {
+      score -= 45;
+    }
+    if (duration > 8) score -= 80;
+    const peak = peakOf(item.buffer);
+    if (peak > 0.18) score += 8;
+    if (peak < 0.045) score -= 22;
+    item.score = score;
+    return score;
+  }
+
+  function curate(decoded) {
+    return decoded
+      .map((item) => {
+        qualityScore(item);
+        return item;
+      })
+      .filter((item) => item.score >= 8 && item.buffer.duration <= 8)
+      .sort((a, b) => b.score - a.score);
+  }
+
   function mapToKit(engine, decoded, kitName) {
-    const id = `import-${Date.now()}`;
-    const used = new Set();
+    const id = `import-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const pool = decoded;
     const pads = SLOT_PREF.map((wanted, index) => {
-      let pick = decoded.find((item, i) => !used.has(i) && item.role === wanted);
-      if (!pick) pick = decoded.find((item, i) => !used.has(i));
-      if (pick) used.add(decoded.indexOf(pick));
+      let pickIndex = pool.findIndex((item) => item.role === wanted);
+      if (pickIndex < 0) pickIndex = pool.findIndex((item) => item.score > 0);
+      const pick = pickIndex >= 0 ? pool.splice(pickIndex, 1)[0] : null;
       const meta = window.PulseKits.roleMeta[wanted] || window.PulseKits.roleMeta.perc;
       const bufferId = `${id}-${index}`;
       if (pick) engine.registerBuffer(bufferId, pick.buffer);
@@ -148,31 +194,67 @@
     });
     return {
       id,
-      name: kitName || "Imported Pack",
+      name: (kitName || "Imported Pack").slice(0, 28),
       bpm: guessBpm(kitName || ""),
       builtIn: false,
       pads,
     };
   }
 
-  async function importList(engine, fileList) {
+  function packEliteKits(engine, decoded) {
+    const elite = curate(decoded);
+    if (!elite.length) return [];
+    const names = ["Elite Jungle", "Elite Roller", "Elite Hits"];
+    const kits = [];
+    const rest = elite.slice();
+    for (let i = 0; i < names.length && rest.length >= 6; i += 1) {
+      kits.push(mapToKit(engine, rest, names[i]));
+    }
+    return kits;
+  }
+
+  async function filesFromList(fileList) {
     const files = [];
     for (const file of fileList) {
+      const name = file.webkitRelativePath || file.pathName || file.name;
+      if (file.size > 12 * 1024 * 1024) continue;
       const buffer = await file.arrayBuffer();
-      if (/\.zip$/i.test(file.name)) {
+      if (/\.zip$/i.test(name)) {
         const extracted = await unzip(buffer);
-        files.push(...extracted);
+        files.push(...extracted.filter((item) => item.data.byteLength < 12 * 1024 * 1024));
       } else {
-        files.push({ name: file.name, data: new Uint8Array(buffer) });
+        files.push({ name, data: new Uint8Array(buffer) });
       }
     }
+    return files;
+  }
+
+  async function walkDirectory(handle, prefix = "") {
+    const out = [];
+    for await (const [entryName, child] of handle.entries()) {
+      const path = prefix ? `${prefix}/${entryName}` : entryName;
+      if (child.kind === "directory") {
+        out.push(...await walkDirectory(child, path));
+      } else if (AUDIO_EXT.test(entryName) || /\.zip$/i.test(entryName)) {
+        const file = await child.getFile();
+        Object.defineProperty(file, "pathName", { value: path });
+        out.push(file);
+      }
+    }
+    return out;
+  }
+
+  async function importList(engine, fileList) {
+    const files = await filesFromList(fileList);
     const decoded = await decodeFiles(engine, files);
     if (!decoded.length) {
       throw new Error("Inga avkodningsbara samples hittades.");
     }
-    const kitName = fileList.length === 1 ? fileList[0].name.replace(/\.zip$/i, "") : "Custom Kit";
-    return mapToKit(engine, decoded, kitName.slice(0, 28));
+    const kitName = fileList.length === 1 ? fileList[0].name.replace(/\.zip$/i, "") : "Desktop Scan";
+    const elite = packEliteKits(engine, decoded);
+    if (elite.length) return elite;
+    return [mapToKit(engine, decoded, kitName)];
   }
 
-  window.PulseImport = { importList, unzip, classify };
+  window.PulseImport = { importList, unzip, classify, walkDirectory, packEliteKits };
 })();

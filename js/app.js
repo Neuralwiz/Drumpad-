@@ -585,17 +585,33 @@
 
   async function handleFiles(fileList) {
     if (!fileList?.length) return;
-    $("import-status").textContent = "Avkodar samples…";
+    $("import-status").textContent = `Skannar ${fileList.length} filer · gallrar house/vox…`;
     try {
-      const kit = await window.PulseImport.importList(state.engine, fileList);
-      state.kits.push(kit);
+      const result = await window.PulseImport.importList(state.engine, fileList);
+      const kits = Array.isArray(result) ? result : [result];
+      kits.forEach((kit) => state.kits.push(kit));
       fillKitSelect();
-      setKit(state.kits.length - 1);
-      $("import-status").textContent = `${kit.name} mappad till 16 pads. Sparas i webbläsaren.`;
-      toast("Pack importerat · sparat");
+      setKit(state.kits.length - kits.length);
+      $("import-status").textContent = `${kits.length} elite-kit från desktop: ${kits.map((kit) => kit.name).join(", ")}.`;
+      toast(`${kits.length} kit redo`);
       persistSoon();
     } catch (error) {
       $("import-status").textContent = error.message;
+    }
+  }
+
+  async function scanDesktopFolder() {
+    try {
+      if (window.showDirectoryPicker) {
+        const handle = await window.showDirectoryPicker({ mode: "read" });
+        $("import-status").textContent = "Läser mapp…";
+        const files = await window.PulseImport.walkDirectory(handle, handle.name);
+        await handleFiles(files);
+        return;
+      }
+      $("dir-input").click();
+    } catch (error) {
+      if (error?.name !== "AbortError") $("import-status").textContent = error.message;
     }
   }
 
@@ -733,6 +749,8 @@
     });
 
     $("file-input").addEventListener("change", (e) => handleFiles(e.target.files));
+    $("dir-input").addEventListener("change", (e) => handleFiles(e.target.files));
+    $("btn-scan-folder").addEventListener("click", scanDesktopFolder);
     const zone = $("dropzone");
     ["dragenter", "dragover"].forEach((type) => {
       zone.addEventListener(type, (e) => {
